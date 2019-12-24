@@ -5,16 +5,17 @@ import io.rsocket.RSocketFactory
 import io.rsocket.RSocketFactory.ClientRSocketFactory
 import io.rsocket.frame.decoder.PayloadDecoder
 import io.rsocket.transport.netty.client.TcpClientTransport
-import org.reactivestreams.Publisher
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Configuration
 import org.springframework.messaging.rsocket.RSocketRequester
 import org.springframework.messaging.rsocket.RSocketStrategies
 import org.springframework.util.MimeTypeUtils
-import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.PathVariable
-import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.reactive.function.BodyInserters
+import org.springframework.web.reactive.function.server.ServerResponse
+import org.springframework.web.reactive.function.server.router
+import reactor.core.publisher.toMono
 
 @SpringBootApplication
 class ConsumerApplication {
@@ -49,11 +50,18 @@ fun main(args: Array<String>) {
     runApplication<ConsumerApplication>(*args)
 }
 
-@RestController
-class ConsumerMessages(private val rSocketRequester: RSocketRequester) {
-    @GetMapping("/echo/{message}")
-    fun run(@PathVariable message: String?): Publisher<String> {
-        println(message)
-        return rSocketRequester.route("echo").data(message!!).retrieveMono(String::class.java)
-    }
+@Configuration
+class ConsumerMessagesRoute(private val rSocketRequester: RSocketRequester) {
+
+    @Bean
+    fun routes() =
+        router {
+            GET("/echo/{message}")
+            {
+                rSocketRequester.route("echo").data(it.pathVariable("message")).retrieveMono(String::class.java)
+                    .toMono()
+                    .flatMap { ServerResponse.ok().body(BodyInserters.fromValue(it))}
+            }
+        }
+
 }
