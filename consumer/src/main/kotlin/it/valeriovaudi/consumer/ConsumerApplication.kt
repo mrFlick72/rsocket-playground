@@ -1,7 +1,5 @@
 package it.valeriovaudi.consumer
 
-import io.rsocket.RSocket
-import io.rsocket.RSocketFactory
 import io.rsocket.RSocketFactory.ClientRSocketFactory
 import io.rsocket.frame.decoder.PayloadDecoder
 import io.rsocket.transport.netty.client.TcpClientTransport
@@ -19,16 +17,6 @@ import reactor.core.publisher.toMono
 
 @SpringBootApplication
 class ConsumerApplication {
-    @Bean
-    fun rSocket(): RSocket? {
-        return RSocketFactory.connect()
-            .mimeType(MimeTypeUtils.APPLICATION_JSON_VALUE, MimeTypeUtils.APPLICATION_JSON_VALUE)
-            .frameDecoder(PayloadDecoder.ZERO_COPY)
-            .transport(TcpClientTransport.create(7000))
-            .start()
-            .block()
-    }
-
 
     @Bean
     fun rSocketRequester(rSocketStrategies: RSocketStrategies?): RSocketRequester? {
@@ -58,9 +46,13 @@ class ConsumerMessagesRoute(private val rSocketRequester: RSocketRequester) {
         router {
             GET("/echo/{message}")
             {
-                rSocketRequester.route("echo").data(it.pathVariable("message")).retrieveMono(String::class.java)
+                rSocketRequester.route("echo")
+                    .data(it.pathVariable("message"))
+                    .retrieveMono(String::class.java)
                     .toMono()
-                    .flatMap { ServerResponse.ok().body(BodyInserters.fromValue(it))}
+                    .flatMap {
+                        ServerResponse.ok().body(BodyInserters.fromValue(it))
+                    }
             }
         }
 
