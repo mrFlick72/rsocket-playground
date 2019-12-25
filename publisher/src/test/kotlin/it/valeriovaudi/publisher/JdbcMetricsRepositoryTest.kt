@@ -10,6 +10,9 @@ import org.testcontainers.junit.jupiter.Testcontainers
 import reactor.core.publisher.toMono
 import reactor.test.StepVerifier
 import java.io.File
+import java.util.*
+import java.util.function.Predicate
+import java.util.stream.Stream
 
 @Testcontainers
 internal class JdbcMetricsRepositoryTest {
@@ -22,6 +25,7 @@ internal class JdbcMetricsRepositoryTest {
     }
 
     lateinit var client: DatabaseClient
+    lateinit var jdbcMetricsRepository: MetricsRepository
 
     @BeforeEach
     fun setUp() {
@@ -31,12 +35,11 @@ internal class JdbcMetricsRepositoryTest {
         val connectionFactory = ConnectionFactories.get("r2dbcs:mysql://root:root@$serviceHost:$servicePort/metrics")
 
         client = DatabaseClient.create(connectionFactory)
+        jdbcMetricsRepository = JdbcMetricsRepository(client)
     }
 
     @Test
     fun emit() {
-        val jdbcMetricsRepository = JdbcMetricsRepository(client)
-
         val metrics = Metrics(name = "A_METRICS_NAME", value = "A_VALUE")
         val emit = jdbcMetricsRepository.emit(metrics).toMono()
 
@@ -47,5 +50,21 @@ internal class JdbcMetricsRepositoryTest {
 
     @Test
     fun sse() {
+        val aMetrics = Metrics(name = "A_METRICS_NAME", value = "A_VALUE")
+        val anotherMetrics = Metrics(name = "A_METRICS_NAME", value = "ANOTHER_VALUE")
+        val anotherMetricsAgain = Metrics(name = "A_METRICS_NAME", value = "ANOTHER_VALUE_AGAIN")
+
+        listOf(aMetrics, anotherMetrics, anotherMetricsAgain)
+                .map { metrics ->
+                    StepVerifier.create(jdbcMetricsRepository.emit(metrics).toMono())
+                            .expectNext(metrics)
+                            .verifyComplete()
+                }
+
+        StepVerifier.create(jdbcMetricsRepository.sse("A_METRICS_NAME"))
+                .expectNext(aMetrics)
+                .expectNext(anotherMetrics)
+                .expectNext(anotherMetricsAgain)
+                .verifyComplete()
     }
 }

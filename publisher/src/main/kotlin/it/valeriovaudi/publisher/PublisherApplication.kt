@@ -1,9 +1,11 @@
 package it.valeriovaudi.publisher
 
+import kotlinx.coroutines.flow.flatMap
 import org.reactivestreams.Publisher
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 import org.springframework.data.r2dbc.core.DatabaseClient
+import org.springframework.data.r2dbc.core.flow
 import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.stereotype.Controller
 import reactor.core.publisher.Mono
@@ -44,8 +46,17 @@ class JdbcMetricsRepository(private val databaseClient: DatabaseClient) : Metric
                     .flatMap { Mono.just(metrics) }
 
 
-    override fun sse(name: String): Publisher<Metrics> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-    }
+    override fun sse(name: String): Publisher<Metrics> =
+            databaseClient.execute("SELECT METRICS_NAME, METRICS_VALUE FROM METRICS WHERE METRICS_NAME=:name")
+                    .bind("name", name)
+                    .fetch()
+                    .all()
+                    .map { sqlRowMap ->
+                        Metrics(
+                                sqlRowMap.getValue("METRICS_NAME") as String,
+                                sqlRowMap.getValue("METRICS_VALUE") as String
+                        )
+                    }
+
 
 }
