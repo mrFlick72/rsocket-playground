@@ -1,48 +1,37 @@
 package it.valeriovaudi.publisher
 
 import io.r2dbc.spi.ConnectionFactories
-import io.r2dbc.spi.ConnectionFactory
-import io.r2dbc.spi.ConnectionFactoryOptions
-import io.r2dbc.spi.Option
-import org.junit.jupiter.api.Test
-
-import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.autoconfigure.data.r2dbc.DataR2dbcTest
+import org.junit.jupiter.api.Test
 import org.springframework.data.r2dbc.core.DatabaseClient
 import org.testcontainers.containers.DockerComposeContainer
+import org.testcontainers.junit.jupiter.Container
+import org.testcontainers.junit.jupiter.Testcontainers
 import reactor.core.publisher.toMono
 import reactor.test.StepVerifier
 import java.io.File
 
-@DataR2dbcTest
+@Testcontainers
 internal class JdbcMetricsRepositoryTest {
 
-    /* companion object {
-         @JvmField
-         val container: DockerComposeContainer<*> = DockerComposeContainer<Nothing>(File("src/test/resources/docker-compose.yml"))
-                 .withExposedService("postgres_1", 5432)
-     }
- */
-    @Autowired
+    companion object {
+        @JvmField
+        @Container
+        val container: DockerComposeContainer<*> = DockerComposeContainer<Nothing>(File("src/test/resources/docker-compose.yml"))
+                .withExposedService("database_1", 3306)
+    }
+
     lateinit var client: DatabaseClient
 
-    /*@BeforeEach
+    @BeforeEach
     fun setUp() {
-        */
-    /**
-     * I prefer do not use docker port redirect in order to prevents the port conflicts on container start,
-     * imaging it on a concurrent test suite, the code below is necessary in order to get the host and port
-     * that the docker runtime assign to the container
-     * *//*
         val serviceHost = container.getServiceHost("database_1", 3306)
         val servicePort = container.getServicePort("database_1", 3306)
 
         val connectionFactory = ConnectionFactories.get("r2dbcs:mysql://root:root@$serviceHost:$servicePort/metrics")
 
-        create = DatabaseClient.create(connectionFactory)
-    }*/
+        client = DatabaseClient.create(connectionFactory)
+    }
 
     @Test
     fun emit() {

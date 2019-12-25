@@ -1,0 +1,12 @@
+version: "2.0"
+
+services:
+  database:
+    image: mysql
+    ports:
+      - "3306:3306"
+    volumes:
+    - ./init.sql:/docker-entrypoint-initdb.d/schema.sql
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=metrics
