@@ -7,7 +7,9 @@ import org.springframework.context.annotation.Bean
 import org.springframework.data.r2dbc.core.DatabaseClient
 import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.stereotype.Controller
+import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
+import java.time.Duration
 
 @SpringBootApplication
 class PublisherApplication {
@@ -34,7 +36,7 @@ class RSocketMessagingEndPoint {
 class RSocketMetricsEndPoint(private val metricsRepository: MetricsRepository) {
 
     @MessageMapping("metrics/sse")
-    fun sse(name: String): Publisher<Metric> = metricsRepository.sse(name)
+    fun sse(name: String): Publisher<Metric> = Flux.interval(Duration.ofSeconds(1)).flatMap { metricsRepository.sse(name) }
 
     @MessageMapping("metrics/emit")
     fun emitter(metric: Metric): Publisher<Metric> = metricsRepository.emit(metric)
