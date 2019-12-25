@@ -3,13 +3,19 @@ package it.valeriovaudi.publisher
 import org.reactivestreams.Publisher
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
+import org.springframework.context.annotation.Bean
 import org.springframework.data.r2dbc.core.DatabaseClient
 import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.stereotype.Controller
 import reactor.core.publisher.Mono
 
 @SpringBootApplication
-class PublisherApplication
+class PublisherApplication {
+
+    @Bean
+    fun jdbcMetricsRepository(databaseClient: DatabaseClient) = JdbcMetricsRepository(databaseClient)
+
+}
 
 fun main(args: Array<String>) {
     runApplication<PublisherApplication>(*args)
@@ -22,6 +28,16 @@ class RSocketMessagingEndPoint {
         println(message)
         return "echo of message: $message"
     }
+}
+
+@Controller
+class RSocketMetricsEndPoint(private val metricsRepository: MetricsRepository) {
+
+    @MessageMapping("metrics/sse")
+    fun sse(name: String): Publisher<Metric> = metricsRepository.sse(name)
+
+    @MessageMapping("metrics/emit")
+    fun emitter(metric: Metric): Publisher<Metric> = metricsRepository.emit(metric)
 }
 
 data class Metric(val name: String, val value: String)
