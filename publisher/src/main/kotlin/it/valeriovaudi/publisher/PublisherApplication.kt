@@ -1,11 +1,9 @@
 package it.valeriovaudi.publisher
 
-import kotlinx.coroutines.flow.flatMap
 import org.reactivestreams.Publisher
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 import org.springframework.data.r2dbc.core.DatabaseClient
-import org.springframework.data.r2dbc.core.flow
 import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.stereotype.Controller
 import reactor.core.publisher.Mono
@@ -26,35 +24,35 @@ class RSocketMessagingEndPoint {
     }
 }
 
-data class Metrics(val name: String, val value: String)
+data class Metric(val name: String, val value: String)
 
 interface MetricsRepository {
 
-    fun emit(metrics: Metrics): Publisher<Metrics>
+    fun emit(metric: Metric): Publisher<Metric>
 
-    fun sse(name: String): Publisher<Metrics>
+    fun sse(name: String): Publisher<Metric>
 
 }
 
 class JdbcMetricsRepository(private val databaseClient: DatabaseClient) : MetricsRepository {
-    override fun emit(metrics: Metrics): Publisher<Metrics> =
-            databaseClient.execute("INSERT INTO METRICS (METRICS_NAME, METRICS_VALUE) VALUES (:name, :value)")
-                    .bind("name", metrics.name)
-                    .bind("value", metrics.value)
+    override fun emit(metric: Metric): Publisher<Metric> =
+            databaseClient.execute("INSERT INTO METRICS (METRIC_NAME, METRIC_VALUE) VALUES (:name, :value)")
+                    .bind("name", metric.name)
+                    .bind("value", metric.value)
                     .fetch()
                     .rowsUpdated()
-                    .flatMap { Mono.just(metrics) }
+                    .flatMap { Mono.just(metric) }
 
 
-    override fun sse(name: String): Publisher<Metrics> =
-            databaseClient.execute("SELECT METRICS_NAME, METRICS_VALUE FROM METRICS WHERE METRICS_NAME=:name")
+    override fun sse(name: String): Publisher<Metric> =
+            databaseClient.execute("SELECT METRIC_NAME, METRIC_VALUE FROM METRICS WHERE METRIC_NAME=:name")
                     .bind("name", name)
                     .fetch()
                     .all()
                     .map { sqlRowMap ->
-                        Metrics(
-                                sqlRowMap.getValue("METRICS_NAME") as String,
-                                sqlRowMap.getValue("METRICS_VALUE") as String
+                        Metric(
+                                sqlRowMap.getValue("METRIC_NAME") as String,
+                                sqlRowMap.getValue("METRIC_VALUE") as String
                         )
                     }
 

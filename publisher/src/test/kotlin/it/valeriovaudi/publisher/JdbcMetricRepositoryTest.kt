@@ -10,12 +10,9 @@ import org.testcontainers.junit.jupiter.Testcontainers
 import reactor.core.publisher.toMono
 import reactor.test.StepVerifier
 import java.io.File
-import java.util.*
-import java.util.function.Predicate
-import java.util.stream.Stream
 
 @Testcontainers
-internal class JdbcMetricsRepositoryTest {
+internal class JdbcMetricRepositoryTest {
 
     companion object {
         @JvmField
@@ -40,7 +37,7 @@ internal class JdbcMetricsRepositoryTest {
 
     @Test
     fun emit() {
-        val metrics = Metrics(name = "A_METRICS_NAME", value = "A_VALUE")
+        val metrics = Metric(name = "A_METRIC_NAME", value = "A_VALUE")
         val emit = jdbcMetricsRepository.emit(metrics).toMono()
 
         StepVerifier.create(emit)
@@ -50,21 +47,21 @@ internal class JdbcMetricsRepositoryTest {
 
     @Test
     fun sse() {
-        val aMetrics = Metrics(name = "A_METRICS_NAME", value = "A_VALUE")
-        val anotherMetrics = Metrics(name = "A_METRICS_NAME", value = "ANOTHER_VALUE")
-        val anotherMetricsAgain = Metrics(name = "A_METRICS_NAME", value = "ANOTHER_VALUE_AGAIN")
+        val aMetric = Metric(name = "A_METRIC_NAME", value = "A_VALUE")
+        val anotherMetric = Metric(name = "A_METRIC_NAME", value = "ANOTHER_VALUE")
+        val anotherMetricAgain = Metric(name = "A_METRIC_NAME", value = "ANOTHER_VALUE_AGAIN")
 
-        listOf(aMetrics, anotherMetrics, anotherMetricsAgain)
-                .map { metrics ->
-                    StepVerifier.create(jdbcMetricsRepository.emit(metrics).toMono())
-                            .expectNext(metrics)
+        listOf(aMetric, anotherMetric, anotherMetricAgain)
+                .map { metric ->
+                    StepVerifier.create(jdbcMetricsRepository.emit(metric).toMono())
+                            .expectNext(metric)
                             .verifyComplete()
                 }
 
-        StepVerifier.create(jdbcMetricsRepository.sse("A_METRICS_NAME"))
-                .expectNext(aMetrics)
-                .expectNext(anotherMetrics)
-                .expectNext(anotherMetricsAgain)
+        StepVerifier.create(jdbcMetricsRepository.sse("A_METRIC_NAME"))
+                .expectNext(aMetric)
+                .expectNext(anotherMetric)
+                .expectNext(anotherMetricAgain)
                 .verifyComplete()
     }
 }
