@@ -3,6 +3,7 @@ package it.valeriovaudi.publisher
 import org.reactivestreams.Publisher
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
+import org.springframework.cloud.stream.annotation.EnableBinding
 import org.springframework.context.annotation.Bean
 import org.springframework.data.r2dbc.core.DatabaseClient
 import org.springframework.messaging.handler.annotation.MessageMapping
@@ -11,6 +12,7 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.time.Duration
 
+@EnableBinding
 @SpringBootApplication
 class PublisherApplication {
 
@@ -36,7 +38,7 @@ class RSocketMessagingEndPoint {
 class RSocketMetricsEndPoint(private val metricsRepository: MetricsRepository) {
 
     @MessageMapping("metrics/sse")
-    fun sse(name: String): Publisher<Metric> = Flux.interval(Duration.ofSeconds(1)).flatMap { metricsRepository.sse(name) }
+    fun sse(name: String): Publisher<Metric> = Flux.interval(Duration.ofSeconds(1)).flatMap { metricsRepository.findAll(name) }
 
     @MessageMapping("metrics/emit")
     fun emitter(metric: Metric): Publisher<Metric> = metricsRepository.emit(metric)
@@ -48,7 +50,7 @@ interface MetricsRepository {
 
     fun emit(metric: Metric): Publisher<Metric>
 
-    fun sse(name: String): Publisher<Metric>
+    fun findAll(name: String): Publisher<Metric>
 
 }
 
@@ -62,7 +64,7 @@ class JdbcMetricsRepository(private val databaseClient: DatabaseClient) : Metric
                     .flatMap { Mono.just(metric) }
 
 
-    override fun sse(name: String): Publisher<Metric> =
+    override fun findAll(name: String): Publisher<Metric> =
             databaseClient.execute("SELECT METRIC_NAME, METRIC_VALUE FROM METRICS WHERE METRIC_NAME=:name")
                     .bind("name", name)
                     .fetch()

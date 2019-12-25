@@ -1,0 +1,5 @@
+create table METRICS (
+    ID BIGINT NOT NULL PRIMARY KEY AUTO_INCREMENT ,
+    METRIC_NAME varchar(255) NOT NULL            ,
+    METRIC_VALUE varchar(255) NOT NULL
+);

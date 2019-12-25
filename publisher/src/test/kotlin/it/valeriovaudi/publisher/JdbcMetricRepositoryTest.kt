@@ -58,7 +58,7 @@ internal class JdbcMetricRepositoryTest {
                             .verifyComplete()
                 }
 
-        StepVerifier.create(jdbcMetricsRepository.sse("A_METRIC_NAME"))
+        StepVerifier.create(jdbcMetricsRepository.findAll("A_METRIC_NAME"))
                 .expectNext(aMetric)
                 .expectNext(anotherMetric)
                 .expectNext(anotherMetricAgain)
