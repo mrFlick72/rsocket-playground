@@ -7,6 +7,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.messaging.rsocket.RSocketRequester
 import org.springframework.messaging.rsocket.RSocketStrategies
@@ -71,6 +72,19 @@ class ConsumerMessagesRoute(private val rSocketRequester: RSocketRequester) {
                             .contentType(MediaType.TEXT_EVENT_STREAM)
                             .body(retrieveFlux, Metric::class.java)
 
+                }
+
+                PUT("/metrics/{name}")
+                {
+                    it.bodyToMono(Metric::class.java)
+                            .flatMap {
+                                rSocketRequester.route("metrics/emit")
+                                        .data(it)
+                                        .send()
+                            }
+                            .flatMap {
+                                ServerResponse.status(HttpStatus.CREATED).build()
+                            }
                 }
             }
 
