@@ -1,26 +1,24 @@
 package it.valeriovaudi.publisher
 
-import com.rabbitmq.client.AMQP
 import org.reactivestreams.Publisher
 import org.springframework.amqp.core.Queue
+import org.springframework.amqp.rabbit.annotation.RabbitListener
 import org.springframework.amqp.rabbit.core.RabbitTemplate
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
-import org.springframework.cloud.stream.annotation.EnableBinding
-import org.springframework.cloud.stream.annotation.Input
-import org.springframework.cloud.stream.annotation.Output
 import org.springframework.context.annotation.Bean
 import org.springframework.data.r2dbc.core.DatabaseClient
-import org.springframework.messaging.MessageChannel
-import org.springframework.messaging.SubscribableChannel
 import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.stereotype.Controller
+import org.springframework.stereotype.Service
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.core.publisher.toMono
 import reactor.core.scheduler.Schedulers
 import java.io.Serializable
+import java.lang.Exception
 import java.time.Duration
+import java.util.concurrent.ConcurrentLinkedQueue
 
 @SpringBootApplication
 class PublisherApplication {
@@ -28,6 +26,8 @@ class PublisherApplication {
     @Bean
     fun jdbcMetricsRepository(databaseClient: DatabaseClient) = JdbcMetricsRepository(databaseClient)
 
+    @Bean
+    fun metricEmitter() = MetricEmitter(ConcurrentLinkedQueue())
 
     @Bean("storeMetricsBus")
     fun storeMetricsBus(): Queue {
@@ -56,12 +56,41 @@ class RSocketMessagingEndPoint {
     }
 }
 
+@Service
+class MetricsEmitterListener(private val emitter: MetricEmitter) {
+
+    @RabbitListener(queues = ["storeMetricsBus"])
+    fun listenToMetrics(metric: Metric) {
+        println("metric: $metric")
+        emitter.store(metric)
+    }
+}
+
+class MetricEmitter(private val queue: ConcurrentLinkedQueue<Metric>) {
+
+    fun store(metric: Metric) {
+        queue.add(metric)
+    }
+
+    fun emit(): Flux<Metric> =
+            Flux.interval(Duration.ofSeconds(1))
+                    .flatMap <Metric> {
+                        try {
+                            Flux.just(queue.remove())
+                        } catch (e: Exception) {
+                            Flux.empty<Metric>()
+                        }
+                    }
+
+}
+
 @Controller
 class RSocketMetricsEndPoint(private val metricsRepository: MetricsRepository,
-                             private val rabbitTemplate: RabbitTemplate) {
+                             private val rabbitTemplate: RabbitTemplate,
+                             private val emitter: MetricEmitter) {
 
     @MessageMapping("metrics/sse")
-    fun sse(name: String): Publisher<Metric> = Flux.interval(Duration.ofSeconds(1)).flatMap { metricsRepository.findAll(name) }
+    fun sse(name: String): Publisher<Metric> = emitter.emit()
 
     @MessageMapping("metrics/emit")
     fun emitter(metric: Metric): Publisher<Void> = metricsRepository.emit(metric)
