@@ -4,6 +4,7 @@ import org.reactivestreams.Publisher
 import org.springframework.amqp.rabbit.annotation.RabbitListener
 import org.springframework.amqp.rabbit.core.RabbitTemplate
 import reactor.core.publisher.Flux
+import reactor.core.publisher.FluxSink
 import reactor.core.publisher.Mono
 import reactor.core.publisher.toMono
 import reactor.core.scheduler.Schedulers
@@ -31,6 +32,8 @@ class RabbitMQMetricsPublisher(private val queues: ConcurrentLinkedQueue<Concurr
     override fun subscribeOn(name: String): Publisher<Metric> {
         val queue = ConcurrentLinkedQueue<Metric>()
         queues.add(queue)
+        println("queues.size $queues")
+
         return Flux.interval(Duration.ofSeconds(1))
                 .flatMap<Metric> {
                     emitMetricFrom(queue)
@@ -55,6 +58,7 @@ class RabbitMQMetricsPublisher(private val queues: ConcurrentLinkedQueue<Concurr
     private fun resourcesCleanUp(queue: ConcurrentLinkedQueue<Metric>) {
         val removedQueue = queues.remove(queue)
         println("queues.remove(queue): $removedQueue")
+        println("queues.remove(queue): ${queues.size}")
     }
 
     private fun sendToRabbit(metric: Metric): Mono<Metric> {
