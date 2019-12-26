@@ -1,19 +1,30 @@
 package it.valeriovaudi.publisher.streaming
 
+import org.reactivestreams.Publisher
 import org.springframework.amqp.rabbit.annotation.RabbitListener
+import org.springframework.amqp.rabbit.core.RabbitTemplate
 import reactor.core.publisher.Flux
+import reactor.core.publisher.Mono
+import reactor.core.publisher.toMono
+import reactor.core.scheduler.Schedulers
 import java.lang.Exception
 import java.time.Duration
 import java.util.concurrent.ConcurrentLinkedQueue
 
 
-class MetricEmitter(private val queues: ConcurrentLinkedQueue<ConcurrentLinkedQueue<Metric>>) {
+class MetricEmitter(private val queues: ConcurrentLinkedQueue<ConcurrentLinkedQueue<Metric>>,
+                    private val metricsRepository: MetricsRepository,
+                    private val rabbitTemplate: RabbitTemplate ) {
 
-    fun store(metric: Metric) {
-        queues.forEach { queue -> queue.add(metric) }
+    fun publish(metric: Metric) : Publisher<Void> {
+        return metricsRepository.emit(metric)
+                .toMono()
+                .flatMap(this::sendToRabbit)
+                .log()
+                .then(Mono.empty())
     }
 
-    fun subscribeOn(name: String): Flux<Metric> {
+    fun subscribeOn(name: String): Publisher<Metric> {
         val queue = ConcurrentLinkedQueue<Metric>()
         queues.add(queue)
         return Flux.interval(Duration.ofSeconds(1))
@@ -41,13 +52,17 @@ class MetricEmitter(private val queues: ConcurrentLinkedQueue<ConcurrentLinkedQu
         val removedQueue = queues.remove(queue)
         println("queues.remove(queue): $removedQueue")
     }
-}
 
-class MetricsEmitterListener(private val emitter: MetricEmitter) {
+    private fun sendToRabbit(metric: Metric): Mono<Metric> {
+        return Mono.create<Metric> { emitter ->
+            rabbitTemplate.convertAndSend("storeMetricsBus", metric)
+            emitter.success()
+        }.subscribeOn(Schedulers.elastic())
+    }
 
     @RabbitListener(queues = ["storeMetricsBus"])
     fun listenToMetrics(metric: Metric) {
         println("metric: $metric")
-        emitter.store(metric)
+        queues.forEach { queue -> queue.add(metric) }
     }
 }
