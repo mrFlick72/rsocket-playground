@@ -1,6 +1,9 @@
 package it.valeriovaudi.publisher
 
 import io.r2dbc.spi.ConnectionFactories
+import it.valeriovaudi.publisher.streaming.JdbcMetricsRepository
+import it.valeriovaudi.publisher.streaming.Metric
+import it.valeriovaudi.publisher.streaming.MetricsRepository
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.data.r2dbc.core.DatabaseClient
