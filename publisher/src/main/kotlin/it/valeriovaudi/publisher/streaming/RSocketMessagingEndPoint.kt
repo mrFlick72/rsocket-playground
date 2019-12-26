@@ -16,8 +16,7 @@ class RSocketMetricsEndPoint(private val metricsRepository: MetricsRepository,
 
     @MessageMapping("metrics/sse")
     fun sse(name: String): Publisher<Metric> =
-            emitter.emit()
-                    .filter { metric -> metric.name == name }
+            emitter.subscribeOn(name)
 
     @MessageMapping("metrics/emit")
     fun emitter(metric: Metric): Publisher<Void> =

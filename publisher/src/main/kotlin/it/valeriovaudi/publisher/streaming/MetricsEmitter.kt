@@ -13,13 +13,14 @@ class MetricEmitter(private val queues: ConcurrentLinkedQueue<ConcurrentLinkedQu
         queues.forEach { queue -> queue.add(metric) }
     }
 
-    fun emit(): Flux<Metric> {
+    fun subscribeOn(name: String): Flux<Metric> {
         val queue = ConcurrentLinkedQueue<Metric>()
         queues.add(queue)
         return Flux.interval(Duration.ofSeconds(1))
                 .flatMap<Metric> {
                     emitMetricFrom(queue)
                 }
+                .filter { metric -> metric.name == name }
                 .doOnCancel {
                     resourcesCleanUp(queue)
                 }
