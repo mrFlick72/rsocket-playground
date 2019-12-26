@@ -69,7 +69,7 @@ class ConsumerMessagesRoute(private val rSocketRequester: RSocketRequester) {
 
 
                     ServerResponse.ok()
-                            .contentType(MediaType.TEXT_EVENT_STREAM)
+                            .contentType(MediaType.APPLICATION_STREAM_JSON)
                             .body(retrieveFlux, Metric::class.java)
 
                 }
