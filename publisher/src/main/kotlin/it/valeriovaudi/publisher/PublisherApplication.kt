@@ -66,22 +66,25 @@ class MetricsEmitterListener(private val emitter: MetricEmitter) {
     }
 }
 
-class MetricEmitter(private val queue: ConcurrentLinkedQueue<Metric>) {
+class MetricEmitter(private val queues: ConcurrentLinkedQueue<ConcurrentLinkedQueue<Metric>>) {
 
     fun store(metric: Metric) {
-        queue.add(metric)
+        queues.forEach { queue -> queue.add(metric) }
     }
 
-    fun emit(): Flux<Metric> =
-            Flux.interval(Duration.ofSeconds(1))
-                    .flatMap <Metric> {
-                        try {
-                            Flux.just(queue.remove())
-                        } catch (e: Exception) {
-                            Flux.empty<Metric>()
-                        }
+    fun emit(): Flux<Metric> {
+        val queue = ConcurrentLinkedQueue<Metric>()
+        queues.add(queue)
+        return Flux.interval(Duration.ofSeconds(1))
+                .flatMap<Metric> {
+                    try {
+                        Flux.just(queue.remove())
+                    } catch (e: Exception) {
+                        Flux.empty<Metric>()
                     }
+                }
 
+    }
 }
 
 @Controller
@@ -90,19 +93,21 @@ class RSocketMetricsEndPoint(private val metricsRepository: MetricsRepository,
                              private val emitter: MetricEmitter) {
 
     @MessageMapping("metrics/sse")
-    fun sse(name: String): Publisher<Metric> = emitter.emit()
+    fun sse(name: String): Publisher<Metric> = emitter.emit().filter {metric -> metric.name == name }
 
     @MessageMapping("metrics/emit")
     fun emitter(metric: Metric): Publisher<Void> = metricsRepository.emit(metric)
             .toMono()
-            .flatMap { metric: Metric ->
-                Mono.create<Metric> { emitter ->
-                    rabbitTemplate.convertAndSend("storeMetricsBus", metric)
-                    emitter.success()
-                }.subscribeOn(Schedulers.elastic())
-            }
+            .flatMap(this::sendToRabbit)
             .log()
             .then(Mono.empty())
+
+    private fun sendToRabbit(metric: Metric): Mono<Metric> {
+        return Mono.create<Metric> { emitter ->
+            rabbitTemplate.convertAndSend("storeMetricsBus", metric)
+            emitter.success()
+        }.subscribeOn(Schedulers.elastic())
+    }
 }
 
 data class Metric(val name: String, val value: String) : Serializable

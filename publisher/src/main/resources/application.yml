@@ -5,7 +5,3 @@ spring:
   r2dbc:
     url: r2dbcs:mysql://root:root@localhost:3306/metrics
     initialization-mode: never
-
-  cloud:
-    function:
-      definition: storeMetrics|publishMetrics
