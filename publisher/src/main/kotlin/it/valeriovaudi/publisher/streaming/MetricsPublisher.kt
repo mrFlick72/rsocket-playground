@@ -12,19 +12,23 @@ import java.time.Duration
 import java.util.concurrent.ConcurrentLinkedQueue
 
 
-class MetricEmitter(private val queues: ConcurrentLinkedQueue<ConcurrentLinkedQueue<Metric>>,
-                    private val metricsRepository: MetricsRepository,
-                    private val rabbitTemplate: RabbitTemplate ) {
+interface MetricsPublisher {
+    fun publish(metric: Metric): Publisher<Void>
+    fun subscribeOn(name: String): Publisher<Metric>
+}
 
-    fun publish(metric: Metric) : Publisher<Void> {
-        return metricsRepository.emit(metric)
-                .toMono()
-                .flatMap(this::sendToRabbit)
-                .log()
-                .then(Mono.empty())
-    }
+class RabbitMQMetricsPublisher(private val queues: ConcurrentLinkedQueue<ConcurrentLinkedQueue<Metric>>,
+                               private val metricsRepository: MetricsRepository,
+                               private val rabbitTemplate: RabbitTemplate) : MetricsPublisher {
 
-    fun subscribeOn(name: String): Publisher<Metric> {
+    override fun publish(metric: Metric): Publisher<Void> =
+            metricsRepository.emit(metric)
+                    .toMono()
+                    .flatMap(this::sendToRabbit)
+                    .log()
+                    .then(Mono.empty())
+
+    override fun subscribeOn(name: String): Publisher<Metric> {
         val queue = ConcurrentLinkedQueue<Metric>()
         queues.add(queue)
         return Flux.interval(Duration.ofSeconds(1))

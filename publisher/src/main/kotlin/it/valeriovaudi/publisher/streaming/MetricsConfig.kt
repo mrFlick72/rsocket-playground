@@ -8,7 +8,7 @@ import org.springframework.data.r2dbc.core.DatabaseClient
 import java.util.concurrent.ConcurrentLinkedQueue
 
 @Configuration
-class SSEUseCaseConfig {
+class MetricsConfig {
     @Bean
     fun jdbcMetricsRepository(databaseClient: DatabaseClient) =
             JdbcMetricsRepository(databaseClient)
@@ -16,7 +16,7 @@ class SSEUseCaseConfig {
     @Bean
     fun metricEmitter(metricsRepository: JdbcMetricsRepository,
                       rabbitTemplate: RabbitTemplate) =
-            MetricEmitter(ConcurrentLinkedQueue(), metricsRepository, rabbitTemplate)
+            RabbitMQMetricsPublisher(ConcurrentLinkedQueue(), metricsRepository, rabbitTemplate)
 
     @Bean
     fun storeMetricsBus(): Queue =
