@@ -63,12 +63,12 @@ class RabbitMQMetricsPublisher(private val queues: ConcurrentLinkedQueue<Concurr
 
     private fun sendToRabbit(metric: Metric): Mono<Metric> {
         return Mono.create<Metric> { emitter ->
-            rabbitTemplate.convertAndSend("storeMetricsBus", metric)
+            rabbitTemplate.convertAndSend("storeMetricsExchange", "store-metrics", metric)
             emitter.success()
         }.subscribeOn(Schedulers.elastic())
     }
 
-    @RabbitListener(queues = ["storeMetricsBus"])
+    @RabbitListener(queues = ["storeMetricsQueue"])
     fun listenToMetrics(metric: Metric) {
         println("metric: $metric")
         queues.forEach { queue -> queue.add(metric) }
