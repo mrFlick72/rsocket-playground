@@ -4,6 +4,9 @@ import io.rsocket.RSocketFactory.ClientRSocketFactory
 import io.rsocket.frame.decoder.PayloadDecoder
 import io.rsocket.transport.netty.client.TcpClientTransport
 import org.springframework.boot.autoconfigure.SpringBootApplication
+import org.springframework.boot.context.properties.ConfigurationProperties
+import org.springframework.boot.context.properties.ConstructorBinding
+import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.runApplication
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -20,23 +23,30 @@ import reactor.core.publisher.toMono
 import java.awt.PageAttributes
 
 @SpringBootApplication
+@EnableConfigurationProperties(RSocketClientProperties::class)
 class ConsumerApplication {
 
     @Bean
-    fun rSocketRequester(rSocketStrategies: RSocketStrategies?): RSocketRequester? {
+    fun rSocketRequester(rSocketStrategies: RSocketStrategies?,
+                         rSocketClientProperties: RSocketClientProperties): RSocketRequester? {
         return RSocketRequester.builder()
                 .rsocketFactory { factory: ClientRSocketFactory ->
                     factory
                             .dataMimeType(MimeTypeUtils.ALL_VALUE)
                             .frameDecoder(PayloadDecoder.ZERO_COPY)
-                            .transport(TcpClientTransport.create(7000))
+                            .transport(TcpClientTransport.create(rSocketClientProperties.host, rSocketClientProperties.port))
                 }
                 .rsocketStrategies(rSocketStrategies)
-                .connect(TcpClientTransport.create(7000))
+                .connect(TcpClientTransport.create(rSocketClientProperties.host, rSocketClientProperties.port))
                 .retry()
                 .block()
     }
+
 }
+
+@ConstructorBinding
+@ConfigurationProperties(prefix = "rsocket.client")
+data class RSocketClientProperties(val host: String, val port: Int)
 
 fun main(args: Array<String>) {
     runApplication<ConsumerApplication>(*args)

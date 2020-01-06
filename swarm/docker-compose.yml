@@ -1,0 +1,33 @@
+version: "3.7"
+
+services:
+  database:
+    image: mysql
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/schema.sql
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=metrics
+  rabbitmq:
+    image: rabbitmq:3-management
+
+  publisher:
+    image: mrflick72/rsocket-playground-publisher:latest
+    deploy:
+      replicas: 3
+      restart_policy:
+        condition: on-failure
+    environment:
+      - spring.r2dbc.url=r2dbcs:mysql://root:root@database:3306/metrics
+      - spring.rabbitmq.host=rabbitmq
+
+  consumer:
+    image: mrflick72/rsocket-playground-consumer:latest
+    ports:
+      - 8080:8080
+    deploy:
+      replicas: 3
+      restart_policy:
+        condition: on-failure
+    environment:
+      - rsocket.client.host=publisher
