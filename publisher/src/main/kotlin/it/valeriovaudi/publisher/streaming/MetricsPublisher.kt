@@ -68,7 +68,7 @@ class RabbitMQMetricsPublisher(private val queues: ConcurrentLinkedQueue<Concurr
         }.subscribeOn(Schedulers.elastic())
     }
 
-    @RabbitListener(queues = ["storeMetricsQueue"])
+    @RabbitListener(queues = ["#{queueNameGenerator.anonymousQueueNameFor('storeMetricsQueue')}"])
     fun listenToMetrics(metric: Metric) {
         println("metric: $metric")
         queues.forEach { queue -> queue.add(metric) }
