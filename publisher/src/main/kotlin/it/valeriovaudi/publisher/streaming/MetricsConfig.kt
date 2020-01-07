@@ -22,8 +22,9 @@ class MetricsConfig {
 
     @Bean
     fun metricEmitter(metricsRepository: JdbcMetricsRepository,
-                      rabbitTemplate: RabbitTemplate) =
-            RabbitMQMetricsPublisher(ConcurrentLinkedQueue(), metricsRepository, rabbitTemplate)
+                      rabbitTemplate: RabbitTemplate,
+                      instanceId: String) =
+            RabbitMQMetricsPublisher(ConcurrentLinkedQueue(), metricsRepository, rabbitTemplate, instanceId)
 
     @Bean
     fun storeMetricsQueue(queueNameGenerator: AnonymousQueueNameGenerator): Queue =

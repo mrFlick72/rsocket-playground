@@ -5,6 +5,8 @@ import org.springframework.data.r2dbc.core.DatabaseClient
 import reactor.core.publisher.Mono
 import java.io.Serializable
 
+data class MetricEvent(val name: String, val value: String, val publisherId: String)
+
 data class Metric(val name: String, val value: String) : Serializable
 
 interface MetricsRepository {

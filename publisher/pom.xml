@@ -180,7 +180,7 @@
                 <configuration>
                     <imageName>mrflick72/${project.build.finalName}:latest</imageName>
                     <imageTags>
-                        <imageTag>${pom.version}</imageTag>
+<!--                        <imageTag>${pom.version}</imageTag>-->
                         <imageTag>latest</imageTag>
                     </imageTags>
                     <dockerDirectory>src/main/docker</dockerDirectory>

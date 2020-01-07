@@ -21,6 +21,7 @@ import org.springframework.web.reactive.function.server.router
 import reactor.core.publisher.toFlux
 import reactor.core.publisher.toMono
 import java.awt.PageAttributes
+import java.util.*
 
 @SpringBootApplication
 @EnableConfigurationProperties(RSocketClientProperties::class)
@@ -42,6 +43,9 @@ class ConsumerApplication {
                 .block()
     }
 
+    @Bean
+    fun instanceId() = UUID.randomUUID().toString()
+
 }
 
 @ConstructorBinding
@@ -54,8 +58,11 @@ fun main(args: Array<String>) {
 
 data class Metric(val name: String, val value: String)
 
+data class MetricResponse(val name: String, val value: String, val publisherId: String, var consumerId: String? = null)
+
 @Configuration
-class ConsumerMessagesRoute(private val rSocketRequester: RSocketRequester) {
+class ConsumerMessagesRoute(private val rSocketRequester: RSocketRequester,
+                            private val instanceId: String) {
 
     @Bean
     fun routes() =
@@ -75,12 +82,13 @@ class ConsumerMessagesRoute(private val rSocketRequester: RSocketRequester) {
                 {
                     val retrieveFlux = rSocketRequester.route("metrics/sse")
                             .data(it.pathVariable("name"))
-                            .retrieveFlux(Metric::class.java);
+                            .retrieveFlux(MetricResponse::class.java)
+                            .map { metric -> metric.copy(consumerId = instanceId) }
 
 
                     ServerResponse.ok()
                             .contentType(MediaType.APPLICATION_STREAM_JSON)
-                            .body(retrieveFlux, Metric::class.java)
+                            .body(retrieveFlux, MetricResponse::class.java)
 
                 }
 

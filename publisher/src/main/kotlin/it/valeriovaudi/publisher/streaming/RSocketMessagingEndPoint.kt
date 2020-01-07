@@ -9,7 +9,7 @@ import org.springframework.stereotype.Controller
 class RSocketMetricsEndPoint(private val emitter: RabbitMQMetricsPublisher) {
 
     @MessageMapping("metrics/sse")
-    fun sse(name: String): Publisher<Metric> =
+    fun sse(name: String): Publisher<MetricEvent> =
             emitter.subscribeOn(name)
 
     @MessageMapping("metrics/emit")

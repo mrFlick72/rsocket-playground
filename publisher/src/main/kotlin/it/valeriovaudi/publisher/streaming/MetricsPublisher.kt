@@ -4,7 +4,6 @@ import org.reactivestreams.Publisher
 import org.springframework.amqp.rabbit.annotation.RabbitListener
 import org.springframework.amqp.rabbit.core.RabbitTemplate
 import reactor.core.publisher.Flux
-import reactor.core.publisher.FluxSink
 import reactor.core.publisher.Mono
 import reactor.core.publisher.toMono
 import reactor.core.scheduler.Schedulers
@@ -15,12 +14,13 @@ import java.util.concurrent.ConcurrentLinkedQueue
 
 interface MetricsPublisher {
     fun publish(metric: Metric): Publisher<Void>
-    fun subscribeOn(name: String): Publisher<Metric>
+    fun subscribeOn(name: String): Publisher<MetricEvent>
 }
 
 class RabbitMQMetricsPublisher(private val queues: ConcurrentLinkedQueue<ConcurrentLinkedQueue<Metric>>,
                                private val metricsRepository: MetricsRepository,
-                               private val rabbitTemplate: RabbitTemplate) : MetricsPublisher {
+                               private val rabbitTemplate: RabbitTemplate,
+                               private val instanceId: String) : MetricsPublisher {
 
     override fun publish(metric: Metric): Publisher<Void> =
             metricsRepository.emit(metric)
@@ -29,7 +29,7 @@ class RabbitMQMetricsPublisher(private val queues: ConcurrentLinkedQueue<Concurr
                     .log()
                     .then(Mono.empty())
 
-    override fun subscribeOn(name: String): Publisher<Metric> {
+    override fun subscribeOn(name: String): Publisher<MetricEvent> {
         val queue = ConcurrentLinkedQueue<Metric>()
         queues.add(queue)
         println("queues.size $queues")
@@ -39,6 +39,7 @@ class RabbitMQMetricsPublisher(private val queues: ConcurrentLinkedQueue<Concurr
                     emitMetricFrom(queue)
                 }
                 .filter { metric -> metric.name == name }
+                .map { metric -> MetricEvent(metric.name, metric.value, instanceId) }
                 .doOnCancel {
                     resourcesCleanUp(queue)
                 }
