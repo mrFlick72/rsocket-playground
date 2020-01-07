@@ -1,0 +1,13 @@
+AWS_ZONE: your zone
+
+AWS_EC2_INSTANCE_TYPE: t2.medium
+AWS_EC2_INSTANCE_COUNT: 2
+
+AWS_EC2_INSTANCE_KEYPAIR_NAME: "your keypair name"
+AWS_EC2_AMI_TYPE: ami-0d4c3eabb9e72650a #Amazon Linux 2 AMI (HVM), SSD Volume Type
+
+AWS_DEFAULT_VPC_SUBNET: "your subnet"
+AWS_VPC_ID: "your vpc id"
+
+AWS_SECURITY_GROUP: docker-swarm
+VOLUME_SIZE: 8

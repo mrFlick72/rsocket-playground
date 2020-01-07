@@ -1,0 +1,20 @@
+--- # cluster configuration
+
+- hosts: master_nodes
+  become: yes
+  remote_user: ec2-user
+  tasks:
+    - name: download  sql init
+      get_url:
+        url: https://raw.githubusercontent.com/mrFlick72/rsocket-playground/master/swarm/init.sql
+        dest: /home/ec2-user
+
+    - name: download  docker-compose
+      get_url:
+        url: https://raw.githubusercontent.com/mrFlick72/rsocket-playground/master/swarm/docker-compose.yml
+        dest: /home/ec2-user
+
+    - name: install compose
+      shell: docker stack deploy --compose-file=docker-compose.yml rsocket
+      args:
+        executable: /bin/bash

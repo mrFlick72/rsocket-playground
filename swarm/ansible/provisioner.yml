@@ -1,0 +1,98 @@
+- hosts: localhost
+  gather_facts: no
+  vars_files:
+    - keys.yml
+    - aws_credentials_keys.yml
+  vars:
+    AWS_SECURITY_GROUP_TAG_NAME: swarm-security-group
+  tasks:
+    - name: create security group
+      ec2_group:
+        aws_access_key: "{{ AWS_ACCESS_KEY_ID }}"
+        aws_secret_key: "{{ AWS_SECRET_ACCESS_KEY }}"
+        ec2_region: "{{ AWS_REGION }}"
+        vpc_id: "{{ AWS_VPC_ID }}"
+        name: swarm-security-group
+        description: sg with swarm rules
+        tags:
+           Name: swarm-security-group
+        rules:
+          - proto: tcp
+            from_port: 8080
+            to_port: 8080
+            cidr_ip: 0.0.0.0/0
+
+          - proto: tcp
+            ports: 22
+            cidr_ip: 0.0.0.0/0
+
+          - proto: tcp
+            ports: 2376
+            cidr_ip: 0.0.0.0/0
+
+          - proto: tcp
+            ports: 2377
+            cidr_ip: 0.0.0.0/0
+
+          - proto: tcp
+            ports: 7946
+            cidr_ip: 0.0.0.0/0
+
+          - proto: udp
+            ports: 7946
+            cidr_ip: 0.0.0.0/0
+
+          - proto: udp
+            ports: 4789
+            cidr_ip: 0.0.0.0/0
+      register: swarmSecurityGroup
+    - name:
+      debug:
+        msg: "{{ swarmSecurityGroup }}"
+
+    - name: Provision instance
+      ec2:
+        aws_access_key: "{{ AWS_ACCESS_KEY_ID }}"
+        aws_secret_key: "{{ AWS_SECRET_ACCESS_KEY }}"
+        ec2_region: "{{ AWS_REGION }}"
+        instance_type: "{{ AWS_EC2_INSTANCE_TYPE }}"
+        keypair: "{{ AWS_EC2_INSTANCE_KEYPAIR_NAME }}"
+        image: "{{ AWS_EC2_AMI_TYPE }}"
+        assign_public_ip: yes
+        vpc_subnet_id: "{{ AWS_DEFAULT_VPC_SUBNET }}"
+        group_id: "{{ swarmSecurityGroup.group_id }}"
+        wait: true
+        volumes:
+          - device_name: /dev/xvda
+            volume_size: "{{ VOLUME_SIZE }}"
+            volume_type: gp2
+            delete_on_termination: true
+        exact_count:  1
+        count_tag:
+          Name: swarm_master_nodes
+        instance_tags:
+          Name: swarm_master_nodes
+
+
+    - name: Provision instance
+      ec2:
+        aws_access_key: "{{ AWS_ACCESS_KEY_ID }}"
+        aws_secret_key: "{{ AWS_SECRET_ACCESS_KEY }}"
+        ec2_region: "{{ AWS_REGION }}"
+        instance_type: "{{ AWS_EC2_INSTANCE_TYPE }}"
+        keypair: "{{ AWS_EC2_INSTANCE_KEYPAIR_NAME }}"
+        image: "{{ AWS_EC2_AMI_TYPE }}"
+        assign_public_ip: yes
+        vpc_subnet_id: "{{ AWS_DEFAULT_VPC_SUBNET }}"
+        group_id: "{{ swarmSecurityGroup.group_id }}"
+        wait: true
+        volumes:
+          - device_name: /dev/xvda
+            volume_size: "{{ VOLUME_SIZE }}"
+            volume_type: gp2
+            delete_on_termination: true
+        exact_count:  "{{ AWS_EC2_INSTANCE_COUNT }}"
+        count_tag:
+          Name: swarm_worker_nodes
+        instance_tags:
+          Name: swarm_worker_nodes

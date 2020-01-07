@@ -1,0 +1,41 @@
+--- # cluster configuration
+
+- hosts:
+    - master_nodes
+    - worker_nodes
+  become: yes
+  gather_facts: no
+  remote_user: ec2-user
+  tasks:
+    - name: Wait for SSH to come up
+      wait_for_connection:
+        delay: 20
+        timeout: 180
+
+- hosts:
+    - master_nodes
+    - worker_nodes
+  become: yes
+  remote_user: ec2-user
+  tasks:
+    - name: install amazon-linux-extras
+      yum:
+        name: amazon-linux-extras
+        state: latest
+
+    - name: install docker
+      yum:
+        name: docker
+        state: latest
+
+
+    - name: Start docker service
+      service:
+        name: docker
+        enabled: yes
+        state: started
+
+    - name: docker runnable as regular user
+      shell: usermod -aG docker ec2-user
+      args:
+        executable: /bin/bash

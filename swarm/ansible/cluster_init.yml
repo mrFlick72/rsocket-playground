@@ -1,0 +1,35 @@
+--- # cluster configuration
+
+- hosts: master_nodes
+  become: yes
+  remote_user: ec2-user
+  tasks:
+    - name: swarm init
+      shell: docker swarm init
+      args:
+        executable: /bin/bash
+      register: swarm_init_output
+
+
+    - name: echo
+      debug:
+        msg: "{{ swarm_init_output['stdout'] }}"
+
+    - name: prepare kubeadm join command
+      shell: echo "{{ swarm_init_output['stdout']  }}" | grep "docker swarm join "
+      args:
+        executable: /bin/bash
+      register: swarm_init_command
+
+    - name: echo
+      debug:
+        msg: "{{ swarm_init_command['stdout_lines'][0] }}"
+
+- hosts: worker_nodes
+  become: yes
+  remote_user: ec2-user
+  tasks:
+    - name: join to the cluster
+      shell: "sudo {{ hostvars[groups['master_nodes'][0]]['swarm_init_command']['stdout_lines'][0] }}"
+      args:
+        executable: /bin/bash

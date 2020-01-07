@@ -1,0 +1,16 @@
+--- # Kubernetes installation with KubeAdm
+
+- name: server provisioning
+  import_playbook: provisioner.yml
+
+- name: make dynamic inventory
+  import_playbook: make_inventory.yml
+
+- name: cluster setup
+  import_playbook: cluster_setup.yml
+
+- name: cluster init
+  import_playbook: cluster_init.yml
+
+- name: application install
+  import_playbook: application_init.yml
